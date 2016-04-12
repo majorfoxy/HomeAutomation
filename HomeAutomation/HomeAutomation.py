@@ -14,6 +14,7 @@ import os
 import alsaaudio
 import RPi.GPIO as GPIO
 import math
+from random import randrange, uniform
 
 #RPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCServer
@@ -288,7 +289,7 @@ def set_PWM():
             LEDregal=0        
             #print AussenHelligkeit
             if AussenHelligkeit<startwert:
-                if int(time.strftime("%H"))>=5 and int(time.strftime("%H"))<8 and int(time.strftime("%w"))>=1 and int(time.strftime("%w"))<=5:
+                if int(time.strftime("%H"))>=5 and int(time.strftime("%H"))<9: #and int(time.strftime("%w"))>=1 and int(time.strftime("%w"))<=5:
                     LEDregal = int(helligkeit_nach_aussen_licht/4)
                     LEDoben = LEDregal
                     LEDunten = LEDoben*3
@@ -454,6 +455,7 @@ def main_programm():
                             RGBW=[r,g,b,w]
                     except Exception, e:
                         print "no cam info"
+                        RGBW=[10,10,10,10]
                         #import traceback  
                         #write_to_log(traceback.format_exc())     
 
@@ -554,9 +556,9 @@ def pinger():
                         if sp > timedelta(minutes=120):
                             if int(time.strftime("%H"))>8 and int(time.strftime("%H"))<23:
                                 if ip=="192.168.1.104":     #sie ist da
-                                    speak("Servus Hasi. Willkommen zu Hause.")
+                                    speak("Servus Hasi. Willkommen zu Hause.",100)
                                 elif ip=="192.168.1.105":   #er ist da
-                                    speak("Hallo Boss! Willkommen zu Hause.")
+                                    speak("Hallo Boss! Willkommen zu Hause.",100)
 
                         last_seen_home[no]=datetime.now()
                         last_seen = datetime.now()
@@ -571,20 +573,28 @@ def pinger():
             import traceback  
             print traceback.format_exc()
 
-wetter_text=""
+wetter_text="Das heutige Wetter weis ich noch nicht"
 def get_wetter_text_thread():
     global wetter_text
     while(True):
         try:
-            wetter_text= weather.get_weather()
+            wetter_text = weather.get_weather()
             time.sleep(60*60)   #stunde warten
+        except Exception, e:
+            wetter_text="Das heutige Wetter weis ich noch nicht"
+            time.sleep(6)
+            import traceback  
+            print traceback.format_exc()     
 
 def speak_weather():
     global wetter_text
     speak(wetter_text)
     
-def speak(text):
+def speak(text, volume):
+    m = alsaaudio.Mixer('PCM', 0)   # defined alsaaudio.Mixer to change volume
+    m.setvolume(volume) # set volume
     call(["mpg123","-q","http://api.voicerss.org/?key=add015f1fdfd41c69a135c7c9b0025df&src=%s&hl=de-de&f=44khz_16bit_mono" % text])
+
         
 firstrun=True
 guten_morgen=True
@@ -594,7 +604,8 @@ def change_door(channel):
     global firstrun
     global gute_nacht
     global guten_morgen
-    
+    global wetter_text
+
     zeit = time.strftime("%H:%M:%S")
     print ("%s guten_morgen:%s gute_nacht:%s firstrun:%s door_is_open:%s" % (zeit, guten_morgen, gute_nacht, firstrun, door_is_open))
         
@@ -604,12 +615,13 @@ def change_door(channel):
     
     if int(time.strftime("%H"))>=5 and int(time.strftime("%H"))<=9 and door_is_open==True and guten_morgen==False:
         guten_morgen=True
-        text=("Guten Morgen! Das Wetter für Heute: %s" % weather.get_weather)
-        speak(text)
+        text=("Guten Morgen!") 
+        speak(text,50)
+        speak(wetter_text,50)
         
     if int(time.strftime("%H"))>=20 and int(time.strftime("%H"))<=23 and door_is_open==False and  gute_nacht==False:
         gute_nacht=True
-        speak("Gute Nacht ihr beiden")
+        speak("Gute Nacht ihr beiden",100)
            
           
 #main loop
@@ -636,6 +648,8 @@ except Exception, e:
     print traceback.format_exc()
 
 print "warte 15 Sekunden"
+start_new_thread(get_wetter_text_thread,())
+        
 time.sleep(15)  #zur sicherheit 
 while(True):
     try:
@@ -676,7 +690,6 @@ while(True):
         start_new_thread(pinger,())
         start_new_thread(adjust_PWM,())
         start_new_thread(RPC_Server,())
-        start_new_thread(get_wetter_text_thread,())
         start_new_thread(getMySQLWerte,())
 
         guten_morgen=False

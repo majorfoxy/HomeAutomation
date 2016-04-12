@@ -4,7 +4,7 @@
 import urllib
 
 def get_weather():
-    wetter="ist noch nicht sicher"
+    wetter="Das Wetter in Floridsdorf ist noch nicht sicher."
     try:
       wp = urllib.urlopen("http://www.wetter.at/wetter/oesterreich/wien/floridsdorf")
       pw = wp.read()
@@ -17,6 +17,10 @@ def get_weather():
       wetter=wetter.replace('  ',' ')
       wetter=wetter.replace('  ',' ')
       wetter=wetter.replace('  ',' ')
+      wetter=("Das Wetter in Floridsdorf heute: %s " % wetter)
 
       print (wetter)
+    except Exception, e:
+        import traceback  
+        print traceback.format_exc()     
     return wetter
